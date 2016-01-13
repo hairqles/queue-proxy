@@ -7,7 +7,7 @@ import (
 	"github.com/hairqles/queue-proxy/queue"
 )
 
-var q *QueueStorageInterface
+var q queue.QueueStorageInterface
 
 func init() {
 	q = queue.New()
@@ -24,9 +24,9 @@ func main() {
 }
 
 func PushHandler(w http.ResponseWriter, req *http.Request) {
-	q.Enqueue(req)
+	// q.Enqueue(*req)
 }
 
 func PullHandler(w http.ResponseWriter, req *http.Request) {
-	req = q.Dequeue()
+	// r := q.Dequeue()
 }
