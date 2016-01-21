@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -23,10 +24,27 @@ func main() {
 	}
 }
 
-func PushHandler(w http.ResponseWriter, req *http.Request) {
-	// q.Enqueue(*req)
+func PushHandler(rw http.ResponseWriter, req *http.Request) {
+	if err := q.Enqueue(*req); err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	return
 }
 
-func PullHandler(w http.ResponseWriter, req *http.Request) {
-	// r := q.Dequeue()
+func PullHandler(rw http.ResponseWriter, req *http.Request) {
+	request := q.Dequeue()
+
+	body, err := json.Marshal(request)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Write(body)
+	return
 }

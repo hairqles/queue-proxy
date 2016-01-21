@@ -18,8 +18,9 @@ type DefaultQueueStorage struct {
 
 // Creates a new QueueStorageInterface.
 func New() QueueStorageInterface {
-	queue := make([]http.Request, 0)
-	q := &DefaultQueueStorage{queue}
+	q := &DefaultQueueStorage{
+		queue: make([]http.Request, 0),
+	}
 	return q
 }
 
