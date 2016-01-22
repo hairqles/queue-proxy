@@ -1,22 +1,33 @@
 package main
 
 import (
-	"encoding/json"
+	"flag"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/hairqles/queue-proxy/queue"
 )
 
+// Queue storage.
 var q queue.QueueStorageInterface
 
+// Client endpoint.
+var clientUrl string
+
 func init() {
+	clientUrl = os.Getenv("QUEUE_PROXY_CLIENT_URL")
+	flag.StringVar(&clientUrl, "client-url", "", "Client url enpoint")
+	if clientUrl == "" {
+		log.Fatal("Missing client endpoint configuration.")
+	}
+
 	q = queue.New()
 }
 
 func main() {
-	http.HandleFunc("/push", PushHandler)
-	http.HandleFunc("/pull", PullHandler)
+	http.HandleFunc("/enqueue", EnqueueHandler)
+	http.HandleFunc("/dequeue", DequeueHandler)
 
 	err := http.ListenAndServe(":80", nil)
 	if err != nil {
@@ -24,8 +35,9 @@ func main() {
 	}
 }
 
-func PushHandler(rw http.ResponseWriter, req *http.Request) {
-	if err := q.Enqueue(*req); err != nil {
+// Enqueue a new request into the queue.
+func EnqueueHandler(rw http.ResponseWriter, req *http.Request) {
+	if err := q.Enqueue(req); err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -34,17 +46,24 @@ func PushHandler(rw http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func PullHandler(rw http.ResponseWriter, req *http.Request) {
-	request := q.Dequeue()
-
-	body, err := json.Marshal(request)
+// Dequeue a request from the queue and send it to the client.
+func DequeueHandler(rw http.ResponseWriter, req *http.Request) {
+	req, err := q.Dequeue()
 	if err != nil {
-		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+
+	if resp.StatusCode <= 300 {
 		return
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	rw.Header().Set("Content-Type", "application/json")
-	rw.Write(body)
 	return
 }
